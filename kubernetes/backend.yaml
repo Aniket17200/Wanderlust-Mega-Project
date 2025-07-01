@@ -1,3 +1,18 @@
+# ---------------------------------------------------------------------------
+# 1) ConfigMap: provides MONGODB_URI to the backend pod
+# ---------------------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: wanderlust
+data:
+  # Change the DB name (“wanderlust”) if you used something else in MongoDB
+  MONGODB_URI: mongodb://mongo-service:27017/wanderlust
+---
+# ---------------------------------------------------------------------------
+# 2) Deployment: backend Node/Express API (with envFrom -> ConfigMap)
+# ---------------------------------------------------------------------------
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -12,16 +27,22 @@ spec:
       app: backend
   template:
     metadata:
-      name: backend
       labels:
         app: backend
     spec:
       containers:
-        - name: backend
-          image: trainwithshubham/wanderlust-backend-beta:v2
-          ports:
-            - containerPort: 8080
+      - name: backend
+        image: trainwithshubham/wanderlust-backend-beta:v2
+        ports:
+        - containerPort: 8080
+        # 🔑 Inject environment variables from the ConfigMap above
+        envFrom:
+        - configMapRef:
+            name: backend-config
 ---
+# ---------------------------------------------------------------------------
+# 3) Service: exposes backend on NodePort 31100 (unchanged)
+# ---------------------------------------------------------------------------
 apiVersion: v1
 kind: Service
 metadata:
@@ -32,7 +53,7 @@ spec:
   selector:
     app: backend
   ports:
-    - port: 8080
-      targetPort: 8080
-      protocol: TCP
-      nodePort: 31100
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    nodePort: 31100
